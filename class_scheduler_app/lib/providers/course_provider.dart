@@ -55,12 +55,7 @@ class CourseProvider with ChangeNotifier {
   }
 
   List<ClassInstance> getTodaysClasses() {
-    final now = DateTime.now();
-    return _classInstances.where((classInstance) {
-      return classInstance.date.year == now.year &&
-          classInstance.date.month == now.month &&
-          classInstance.date.day == now.day;
-    }).toList();
+    return todaysClasses;
   }
 
   Future<void> archiveCourse(String courseId, bool isArchived) async {
