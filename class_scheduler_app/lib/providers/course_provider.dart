@@ -8,6 +8,8 @@ class CourseProvider with ChangeNotifier {
   List<Course> _courses = [];
   List<ClassInstance> _classInstances = [];
   bool _notificationsEnabled = false;
+  int _currentStreak = 0;
+  int _bestStreak = 0;
 
   List<Course> get courses =>
       _courses.where((course) => !course.isArchived).toList();
@@ -16,6 +18,8 @@ class CourseProvider with ChangeNotifier {
   List<Course> get allCourses => _courses;
   List<ClassInstance> get classInstances => _classInstances;
   bool get notificationsEnabled => _notificationsEnabled;
+  int get currentStreak => _currentStreak;
+  int get bestStreak => _bestStreak;
 
   List<ClassInstance> get todaysClasses {
     final now = DateTime.now();
@@ -128,6 +132,10 @@ class CourseProvider with ChangeNotifier {
       }
 
       _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? false;
+      _currentStreak = prefs.getInt('currentStreak') ?? 0;
+      _bestStreak = prefs.getInt('bestStreak') ?? 0;
+
+      _calculateStreak();
 
       notifyListeners();
     } catch (e) {
@@ -149,6 +157,9 @@ class CourseProvider with ChangeNotifier {
           .map((classInstance) => classInstance.toJson())
           .toList());
       await prefs.setString('classInstances', classInstancesJson);
+
+      await prefs.setInt('currentStreak', _currentStreak);
+      await prefs.setInt('bestStreak', _bestStreak);
     } catch (e) {
       if (kDebugMode) {
         print('Error saving data: $e');
@@ -198,6 +209,7 @@ class CourseProvider with ChangeNotifier {
       _classInstances[index] = classInstance.copyWith(attendanceStatus: status);
 
       await _updateCourseAttendance(classInstance.courseId);
+      _calculateStreak();
 
       await saveData();
       notifyListeners();
@@ -363,5 +375,98 @@ class CourseProvider with ChangeNotifier {
     return _classInstances
         .where((classInstance) => classInstance.courseId == courseId)
         .toList();
+  }
+
+  void _calculateStreak() {
+    final now = DateTime.now();
+    int streak = 0;
+    
+    // Get all unique dates that had classes with marked attendance
+    final Map<String, List<ClassInstance>> classesByDate = {};
+    
+    for (final classInstance in _classInstances) {
+      // Only consider classes in the past
+      final classEnd = DateTime(
+        classInstance.date.year,
+        classInstance.date.month,
+        classInstance.date.day,
+        classInstance.endTime.hour,
+        classInstance.endTime.minute,
+      );
+      
+      if (classEnd.isBefore(now) && classInstance.attendanceStatus != AttendanceStatus.pending) {
+        final dateKey = '${classInstance.date.year}-${classInstance.date.month}-${classInstance.date.day}';
+        classesByDate[dateKey] ??= [];
+        classesByDate[dateKey]!.add(classInstance);
+      }
+    }
+    
+    if (classesByDate.isEmpty) {
+      _currentStreak = 0;
+      return;
+    }
+    
+    // Sort dates in descending order
+    final sortedDates = classesByDate.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+    
+    // Calculate streak starting from most recent date with classes
+    for (final dateKey in sortedDates) {
+      final dayClasses = classesByDate[dateKey]!;
+      
+      // Check if all non-cancelled classes were attended
+      final nonCancelledClasses = dayClasses.where(
+        (c) => c.attendanceStatus != AttendanceStatus.cancelled
+      ).toList();
+      
+      if (nonCancelledClasses.isEmpty) {
+        continue; // Skip days with only cancelled classes
+      }
+      
+      final allAttended = nonCancelledClasses.every(
+        (c) => c.attendanceStatus == AttendanceStatus.attended
+      );
+      
+      if (allAttended) {
+        streak++;
+      } else {
+        break; // Streak ends when we find a day with missed classes
+      }
+    }
+    
+    _currentStreak = streak;
+    
+    // Update best streak if current is higher
+    if (_currentStreak > _bestStreak) {
+      _bestStreak = _currentStreak;
+    }
+  }
+
+  /// Check if a course has low attendance
+  bool hasLowAttendance(String courseId) {
+    final course = getCourseById(courseId);
+    if (course == null) return false;
+    
+    if (course.totalClasses == 0) return false;
+    
+    final percentage = (course.attendedClasses / course.totalClasses) * 100;
+    return percentage < course.requiredAttendance;
+  }
+
+  /// Calculate how many classes need to be attended to reach required percentage
+  int classesNeededToRecover(String courseId) {
+    final course = getCourseById(courseId);
+    if (course == null) return 0;
+    
+    final required = course.requiredAttendance / 100;
+    if (required >= 1.0) return course.totalClasses - course.attendedClasses + 1;
+    
+    final numerator = (required * course.totalClasses) - course.attendedClasses;
+    final denominator = 1 - required;
+    
+    if (denominator <= 0) return 0;
+    
+    final classesNeeded = (numerator / denominator).ceil();
+    return classesNeeded > 0 ? classesNeeded : 0;
   }
 }

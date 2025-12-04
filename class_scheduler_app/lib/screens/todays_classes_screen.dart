@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/course_provider.dart';
 import '../models/class_instance.dart';
 import '../models/course.dart';
 import '../utils/app_theme.dart';
+import '../widgets/streak_widget.dart';
 
 class TodaysClassesScreen extends StatelessWidget {
   const TodaysClassesScreen({super.key});
@@ -42,7 +44,20 @@ class TodaysClassesScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        _buildAddButton(context),
+                        Row(
+                          children: [
+                            Consumer<CourseProvider>(
+                              builder: (context, courseProvider, child) {
+                                return StreakWidget(
+                                  streakDays: courseProvider.currentStreak,
+                                  compact: true,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            _buildAddButton(context),
+                          ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: 32),
@@ -438,6 +453,7 @@ class TodaysClassesScreen extends StatelessWidget {
                 icon: Icons.check_rounded,
                 color: AppTheme.greenColor,
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   courseProvider.markAttendance(
                       classInstance.id, AttendanceStatus.attended);
                   _showSnackBar(
@@ -453,6 +469,7 @@ class TodaysClassesScreen extends StatelessWidget {
                 icon: Icons.close_rounded,
                 color: AppTheme.redColor,
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   courseProvider.markAttendance(
                       classInstance.id, AttendanceStatus.missed);
                   _showSnackBar(context, 'Marked as missed', AppTheme.redColor);
@@ -470,6 +487,7 @@ class TodaysClassesScreen extends StatelessWidget {
             icon: Icons.event_busy_rounded,
             color: AppTheme.yellowColor,
             onPressed: () {
+              HapticFeedback.lightImpact();
               courseProvider.markAttendance(
                   classInstance.id, AttendanceStatus.cancelled);
               _showSnackBar(

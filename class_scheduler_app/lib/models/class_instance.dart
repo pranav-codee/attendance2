@@ -134,4 +134,14 @@ class ClassInstance {
         return 'Cancelled';
     }
   }
+
+  /// Generate a unique notification ID for pre-class reminder
+  int get preClassNotificationId {
+    return '$id\_pre'.hashCode.abs() % 2147483647;
+  }
+
+  /// Generate a unique notification ID for post-class prompt
+  int get postClassNotificationId {
+    return '$id\_post'.hashCode.abs() % 2147483647;
+  }
 }

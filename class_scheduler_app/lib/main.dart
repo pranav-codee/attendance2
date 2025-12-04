@@ -7,8 +7,15 @@ import 'screens/my_courses_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/add_course_screen.dart';
 import 'screens/archived_courses_screen.dart';
+import 'screens/analytics_screen.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize notification service
+  await NotificationService().initialize();
+  
   runApp(const MyApp());
 }
 
@@ -19,9 +26,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (context) => CourseProvider()
-        ..loadData().then((_) =>
-            Provider.of<CourseProvider>(context, listen: false)
-                .generateTodaysClasses()),
+        ..loadData().then((_) {
+            final provider = Provider.of<CourseProvider>(context, listen: false);
+            provider.generateTodaysClasses();
+            // Schedule notifications for today's classes
+            _scheduleNotifications(provider);
+          }),
       child: MaterialApp(
         title: 'Class Scheduler',
         theme: AppTheme.darkTheme,
@@ -29,9 +39,23 @@ class MyApp extends StatelessWidget {
         routes: {
           '/add-course': (context) => const AddCourseScreen(),
           '/archived-courses': (context) => const ArchivedCoursesScreen(),
+          '/analytics': (context) => const AnalyticsScreen(),
         },
         debugShowCheckedModeBanner: false,
       ),
+    );
+  }
+
+  void _scheduleNotifications(CourseProvider provider) async {
+    if (!provider.notificationsEnabled) return;
+    
+    final notificationService = NotificationService();
+    final todaysClasses = provider.getTodaysClasses();
+    final courses = provider.allCourses;
+    
+    await notificationService.scheduleNotificationsForTodaysClasses(
+      todaysClasses,
+      courses,
     );
   }
 }
@@ -49,6 +73,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const TodaysClassesScreen(),
     const MyCoursesScreen(),
+    const AnalyticsScreen(),
     const SettingsScreen(),
   ];
 
@@ -77,7 +102,8 @@ class _MainScreenState extends State<MainScreen> {
               children: [
                 _buildNavItem(0, Icons.calendar_today_rounded, "Today"),
                 _buildNavItem(1, Icons.school_rounded, "Courses"),
-                _buildNavItem(2, Icons.settings_rounded, "Settings"),
+                _buildNavItem(2, Icons.analytics_rounded, "Analytics"),
+                _buildNavItem(3, Icons.settings_rounded, "Settings"),
               ],
             ),
           ),
