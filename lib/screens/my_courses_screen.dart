@@ -555,18 +555,16 @@ class MyCoursesScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       ...course.weeklyClasses.map((weeklyClass) {
-                        final days = weeklyClass.selectedDays.map((day) {
-                          const dayNames = [
-                            'Mon',
-                            'Tue',
-                            'Wed',
-                            'Thu',
-                            'Fri',
-                            'Sat',
-                            'Sun'
-                          ];
-                          return dayNames[day];
-                        }).join(', ');
+                        const dayNames = [
+                          'Mon',
+                          'Tue',
+                          'Wed',
+                          'Thu',
+                          'Fri',
+                          'Sat',
+                          'Sun'
+                        ];
+                        final day = dayNames[weeklyClass.dayOfWeek];
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
@@ -581,7 +579,7 @@ class MyCoursesScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  days,
+                                  day,
                                   style: Theme.of(context)
                                       .textTheme
                                       .labelSmall

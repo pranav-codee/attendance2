@@ -20,7 +20,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   final _courseIdFocusNode = FocusNode();
 
   double _requiredAttendance = 75.0;
-  final List<int> _selectedDays = [];
+  int? _selectedDay; // Single day selection
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   final List<WeeklyClass> _weeklyClasses = [];
@@ -171,15 +171,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(7, (index) {
-                    final isSelected = _selectedDays.contains(index);
+                    final isSelected = _selectedDay == index;
                     return GestureDetector(
                       onTap: () {
                         _dismissKeyboard();
                         setState(() {
                           if (isSelected) {
-                            _selectedDays.remove(index);
+                            _selectedDay = null;
                           } else {
-                            _selectedDays.add(index);
+                            _selectedDay = index;
                           }
                         });
                       },
@@ -310,9 +310,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    weeklyClass.selectedDays
-                                        .map((day) => _fullDayNames[day])
-                                        .join(', '),
+                                    _fullDayNames[weeklyClass.dayOfWeek],
                                     style:
                                         Theme.of(context).textTheme.bodyMedium,
                                   ),
@@ -391,20 +389,20 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 
   bool _canAddWeeklyClass() {
-    return _selectedDays.isNotEmpty && _startTime != null && _endTime != null;
+    return _selectedDay != null && _startTime != null && _endTime != null;
   }
 
   void _addWeeklyClass() {
     if (_canAddWeeklyClass()) {
       final weeklyClass = WeeklyClass(
-        selectedDays: List.from(_selectedDays),
+        dayOfWeek: _selectedDay!,
         startTime: _startTime!,
         endTime: _endTime!,
       );
 
       setState(() {
         _weeklyClasses.add(weeklyClass);
-        _selectedDays.clear();
+        _selectedDay = null;
         _startTime = null;
         _endTime = null;
       });

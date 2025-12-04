@@ -5,7 +5,6 @@ import '../providers/course_provider.dart';
 import '../models/class_instance.dart';
 import '../models/course.dart';
 import '../utils/app_theme.dart';
-import '../widgets/streak_widget.dart';
 
 class TodaysClassesScreen extends StatelessWidget {
   const TodaysClassesScreen({super.key});
@@ -48,23 +47,85 @@ class TodaysClassesScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Row(
-                          children: [
-                            Consumer<CourseProvider>(
-                              builder: (context, courseProvider, child) {
-                                return StreakWidget(
-                                  streakDays: courseProvider.currentStreak,
-                                  compact: true,
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 12),
-                            _buildAddButton(context),
-                          ],
-                        ),
+                        _buildAddButton(context),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
+                    Consumer<CourseProvider>(
+                      builder: (context, courseProvider, child) {
+                        if (courseProvider.currentStreak == 0) {
+                          return const SizedBox.shrink();
+                        }
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.orangeColor.withOpacity(0.15),
+                                AppTheme.yellowColor.withOpacity(0.1),
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.orangeColor.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                courseProvider.currentStreak >= 30
+                                    ? '🔥'
+                                    : courseProvider.currentStreak >= 14
+                                        ? '⭐'
+                                        : courseProvider.currentStreak >= 7
+                                            ? '✨'
+                                            : '🎯',
+                                style: const TextStyle(fontSize: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${courseProvider.currentStreak} day streak!',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: AppTheme.orangeColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    Text(
+                                      courseProvider.currentStreak >= 30
+                                          ? 'Amazing progress!'
+                                          : courseProvider.currentStreak >= 14
+                                              ? 'Keep the momentum!'
+                                              : courseProvider.currentStreak >=
+                                                      7
+                                                  ? 'Great consistency!'
+                                                  : 'Keep it up!',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppTheme.textSecondaryColor,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),

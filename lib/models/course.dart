@@ -38,6 +38,14 @@ class Course {
   }
 
   factory Course.fromJson(Map<String, dynamic> json) {
+    // Handle migration from old format
+    List<WeeklyClass> classes = [];
+    if (json['weeklyClasses'] != null) {
+      for (var wc in json['weeklyClasses'] as List) {
+        classes.addAll(WeeklyClass.fromJsonWithMigration(wc));
+      }
+    }
+
     return Course(
       id: json['id'],
       name: json['name'],
@@ -45,9 +53,7 @@ class Course {
       requiredAttendance: json["requiredAttendance"],
       totalClasses: json["totalClasses"] ?? 0,
       attendedClasses: json["attendedClasses"] ?? 0,
-      weeklyClasses: (json['weeklyClasses'] as List)
-          .map((wc) => WeeklyClass.fromJson(wc))
-          .toList(),
+      weeklyClasses: classes,
       createdAt: DateTime.parse(json['createdAt']),
       isArchived: json['isArchived'] ?? false,
     );
@@ -79,19 +85,23 @@ class Course {
 }
 
 class WeeklyClass {
-  final List<int> selectedDays;
+  final int dayOfWeek; // Single day (0 = Monday, 6 = Sunday)
   final TimeOfDay startTime;
   final TimeOfDay endTime;
 
   WeeklyClass({
-    required this.selectedDays,
+    required this.dayOfWeek,
     required this.startTime,
     required this.endTime,
   });
 
+  // For backward compatibility with old data format
+  List<int> get selectedDays => [dayOfWeek];
+
   Map<String, dynamic> toJson() {
     return {
-      'selectedDays': selectedDays,
+      'dayOfWeek': dayOfWeek,
+      'selectedDays': [dayOfWeek], // Keep for backward compatibility
       'startTime': {
         'hour': startTime.hour,
         'minute': startTime.minute,
@@ -104,8 +114,20 @@ class WeeklyClass {
   }
 
   factory WeeklyClass.fromJson(Map<String, dynamic> json) {
+    // Handle both old and new format
+    int day;
+    if (json.containsKey('dayOfWeek')) {
+      day = json['dayOfWeek'];
+    } else if (json.containsKey('selectedDays')) {
+      // Old format - take first day (will need migration for multiple days)
+      final days = List<int>.from(json['selectedDays']);
+      day = days.isNotEmpty ? days.first : 0;
+    } else {
+      day = 0;
+    }
+
     return WeeklyClass(
-      selectedDays: List<int>.from(json['selectedDays']),
+      dayOfWeek: day,
       startTime: TimeOfDay(
         hour: json['startTime']['hour'],
         minute: json['startTime']['minute'],
@@ -115,5 +137,32 @@ class WeeklyClass {
         minute: json['endTime']['minute'],
       ),
     );
+  }
+
+  // Helper to migrate old format with multiple days to new format
+  static List<WeeklyClass> fromJsonWithMigration(Map<String, dynamic> json) {
+    if (json.containsKey('dayOfWeek')) {
+      // New format - single entry
+      return [WeeklyClass.fromJson(json)];
+    } else if (json.containsKey('selectedDays')) {
+      // Old format - create one WeeklyClass per day
+      final days = List<int>.from(json['selectedDays']);
+      final startTime = TimeOfDay(
+        hour: json['startTime']['hour'],
+        minute: json['startTime']['minute'],
+      );
+      final endTime = TimeOfDay(
+        hour: json['endTime']['hour'],
+        minute: json['endTime']['minute'],
+      );
+      return days
+          .map((day) => WeeklyClass(
+                dayOfWeek: day,
+                startTime: startTime,
+                endTime: endTime,
+              ))
+          .toList();
+    }
+    return [];
   }
 }

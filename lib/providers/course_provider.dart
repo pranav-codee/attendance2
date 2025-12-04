@@ -225,16 +225,18 @@ class CourseProvider with ChangeNotifier {
       for (final weeklyClass in course.weeklyClasses) {
         final todayWeekday = (now.weekday - 1) % 7;
 
-        if (weeklyClass.selectedDays.contains(todayWeekday)) {
+        if (weeklyClass.dayOfWeek == todayWeekday) {
           final existingClass = _classInstances.any((classInstance) =>
               classInstance.courseId == course.id &&
               classInstance.date.year == today.year &&
               classInstance.date.month == today.month &&
-              classInstance.date.day == today.day);
+              classInstance.date.day == today.day &&
+              classInstance.startTime.hour == weeklyClass.startTime.hour &&
+              classInstance.startTime.minute == weeklyClass.startTime.minute);
 
           if (!existingClass) {
             final classInstance = ClassInstance(
-              id: '${course.id}_${today.millisecondsSinceEpoch}',
+              id: '${course.id}_${today.millisecondsSinceEpoch}_${weeklyClass.startTime.hour}_${weeklyClass.startTime.minute}',
               courseId: course.id,
               courseName: course.name,
               date: today,
@@ -313,30 +315,28 @@ class CourseProvider with ChangeNotifier {
     final endDate = now.add(const Duration(days: 365));
 
     for (final weeklyClass in course.weeklyClasses) {
-      for (final dayOfWeek in weeklyClass.selectedDays) {
-        DateTime currentDate = _getNextWeekday(now, dayOfWeek);
+      final dayOfWeek = weeklyClass.dayOfWeek;
+      DateTime currentDate = _getNextWeekday(now, dayOfWeek);
 
-        if (currentDate.isBefore(now.subtract(const Duration(days: 1)))) {
-          currentDate = currentDate.add(const Duration(days: 7));
+      if (currentDate.isBefore(now.subtract(const Duration(days: 1)))) {
+        currentDate = currentDate.add(const Duration(days: 7));
+      }
+
+      while (currentDate.isBefore(endDate)) {
+        final classInstance = ClassInstance(
+          id: '${course.id}_${currentDate.millisecondsSinceEpoch}_${weeklyClass.startTime.hour}_${weeklyClass.startTime.minute}',
+          courseId: course.id,
+          courseName: course.name,
+          date: currentDate,
+          startTime: weeklyClass.startTime,
+          endTime: weeklyClass.endTime,
+          createdAt: DateTime.now(),
+        );
+
+        if (!_classInstances.any((element) => element.id == classInstance.id)) {
+          _classInstances.add(classInstance);
         }
-
-        while (currentDate.isBefore(endDate)) {
-          final classInstance = ClassInstance(
-            id: '${course.id}_${currentDate.millisecondsSinceEpoch}',
-            courseId: course.id,
-            courseName: course.name,
-            date: currentDate,
-            startTime: weeklyClass.startTime,
-            endTime: weeklyClass.endTime,
-            createdAt: DateTime.now(),
-          );
-
-          if (!_classInstances
-              .any((element) => element.id == classInstance.id)) {
-            _classInstances.add(classInstance);
-          }
-          currentDate = currentDate.add(const Duration(days: 7));
-        }
+        currentDate = currentDate.add(const Duration(days: 7));
       }
     }
   }
@@ -375,10 +375,10 @@ class CourseProvider with ChangeNotifier {
   void _calculateStreak() {
     final now = DateTime.now();
     int streak = 0;
-    
+
     // Get all unique dates that had classes with marked attendance
     final Map<String, List<ClassInstance>> classesByDate = {};
-    
+
     for (final classInstance in _classInstances) {
       // Only consider classes in the past
       final classEnd = DateTime(
@@ -388,49 +388,50 @@ class CourseProvider with ChangeNotifier {
         classInstance.endTime.hour,
         classInstance.endTime.minute,
       );
-      
-      if (classEnd.isBefore(now) && classInstance.attendanceStatus != AttendanceStatus.pending) {
-        final dateKey = '${classInstance.date.year}-${classInstance.date.month}-${classInstance.date.day}';
+
+      if (classEnd.isBefore(now) &&
+          classInstance.attendanceStatus != AttendanceStatus.pending) {
+        final dateKey =
+            '${classInstance.date.year}-${classInstance.date.month}-${classInstance.date.day}';
         classesByDate[dateKey] ??= [];
         classesByDate[dateKey]!.add(classInstance);
       }
     }
-    
+
     if (classesByDate.isEmpty) {
       _currentStreak = 0;
       return;
     }
-    
+
     // Sort dates in descending order
     final sortedDates = classesByDate.keys.toList()
       ..sort((a, b) => b.compareTo(a));
-    
+
     // Calculate streak starting from most recent date with classes
     for (final dateKey in sortedDates) {
       final dayClasses = classesByDate[dateKey]!;
-      
+
       // Check if all non-cancelled classes were attended
-      final nonCancelledClasses = dayClasses.where(
-        (c) => c.attendanceStatus != AttendanceStatus.cancelled
-      ).toList();
-      
+      final nonCancelledClasses = dayClasses
+          .where((c) => c.attendanceStatus != AttendanceStatus.cancelled)
+          .toList();
+
       if (nonCancelledClasses.isEmpty) {
         continue; // Skip days with only cancelled classes
       }
-      
-      final allAttended = nonCancelledClasses.every(
-        (c) => c.attendanceStatus == AttendanceStatus.attended
-      );
-      
+
+      final allAttended = nonCancelledClasses
+          .every((c) => c.attendanceStatus == AttendanceStatus.attended);
+
       if (allAttended) {
         streak++;
       } else {
         break; // Streak ends when we find a day with missed classes
       }
     }
-    
+
     _currentStreak = streak;
-    
+
     // Update best streak if current is higher
     if (_currentStreak > _bestStreak) {
       _bestStreak = _currentStreak;
@@ -441,9 +442,9 @@ class CourseProvider with ChangeNotifier {
   bool hasLowAttendance(String courseId) {
     final course = getCourseById(courseId);
     if (course == null) return false;
-    
+
     if (course.totalClasses == 0) return false;
-    
+
     final percentage = (course.attendedClasses / course.totalClasses) * 100;
     return percentage < course.requiredAttendance;
   }
@@ -452,15 +453,16 @@ class CourseProvider with ChangeNotifier {
   int classesNeededToRecover(String courseId) {
     final course = getCourseById(courseId);
     if (course == null) return 0;
-    
+
     final required = course.requiredAttendance / 100;
-    if (required >= 1.0) return course.totalClasses - course.attendedClasses + 1;
-    
+    if (required >= 1.0)
+      return course.totalClasses - course.attendedClasses + 1;
+
     final numerator = (required * course.totalClasses) - course.attendedClasses;
     final denominator = 1 - required;
-    
+
     if (denominator <= 0) return 0;
-    
+
     final classesNeeded = (numerator / denominator).ceil();
     return classesNeeded > 0 ? classesNeeded : 0;
   }
