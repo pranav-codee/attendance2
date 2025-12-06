@@ -175,7 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(color: AppTheme.surfaceColorHighlight),
-          
+
           // Pre-class reminders
           _buildSwitchTile(
             context,
@@ -188,7 +188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(color: AppTheme.surfaceColorHighlight),
-          
+
           // Reminder time picker
           _buildDropdownTile(
             context,
@@ -202,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(color: AppTheme.surfaceColorHighlight),
-          
+
           // Post-class prompts
           _buildSwitchTile(
             context,
@@ -215,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(color: AppTheme.surfaceColorHighlight),
-          
+
           // Daily summary
           _buildSwitchTile(
             context,
@@ -228,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(color: AppTheme.surfaceColorHighlight),
-          
+
           // Daily summary time
           _buildTimeTile(
             context,
@@ -241,7 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(color: AppTheme.surfaceColorHighlight),
-          
+
           // Low attendance warnings
           _buildSwitchTile(
             context,
@@ -291,6 +291,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: value,
             onChanged: onChanged,
             activeColor: AppTheme.primaryColor,
+            activeTrackColor: AppTheme.primaryColor,
+            thumbColor: WidgetStateProperty.all(Colors.white),
           ),
         ],
       ),
@@ -331,7 +333,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: AppTheme.surfaceColorElevated,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: DropdownButton<int>(
               value: value,
@@ -340,7 +342,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               items: options.map((option) {
                 return DropdownMenuItem<int>(
                   value: option,
-                  child: Text('$option min'),
+                  child: Text(
+                    '$option min',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
                 );
               }).toList(),
               onChanged: (newValue) {
