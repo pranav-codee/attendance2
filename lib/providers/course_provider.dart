@@ -455,8 +455,9 @@ class CourseProvider with ChangeNotifier {
     if (course == null) return 0;
 
     final required = course.requiredAttendance / 100;
-    if (required >= 1.0)
+    if (required >= 1.0) {
       return course.totalClasses - course.attendedClasses + 1;
+    }
 
     final numerator = (required * course.totalClasses) - course.attendedClasses;
     final denominator = 1 - required;
