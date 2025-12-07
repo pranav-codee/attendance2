@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/course_provider.dart';
 import '../models/class_instance.dart';
+import '../models/course.dart';
 import '../utils/app_theme.dart';
 import '../widgets/attendance_chart.dart';
 import '../widgets/streak_widget.dart';
@@ -57,15 +58,15 @@ class AnalyticsScreen extends StatelessWidget {
                         const SizedBox(height: 24),
 
                         // Overall Statistics
-                        _buildOverallStats(context, classInstances),
+                        _buildOverallStats(context, courses),
                         const SizedBox(height: 24),
 
                         // Attendance Pie Chart
-                        _buildAttendancePieChart(context, classInstances),
+                        _buildAttendancePieChart(context, courses),
                         const SizedBox(height: 24),
 
-                        // Weekly Attendance Chart
-                        _buildWeeklyChart(context, classInstances),
+                        // Subject-wise Bar Chart
+                        _buildSubjectWiseChart(context, courses),
                         const SizedBox(height: 24),
 
                         // Per-Course Breakdown
@@ -89,31 +90,19 @@ class AnalyticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOverallStats(
-      BuildContext context, List<ClassInstance> classInstances) {
-    final now = DateTime.now();
-    final pastClasses = classInstances.where((c) {
-      final classEnd = DateTime(
-        c.date.year,
-        c.date.month,
-        c.date.day,
-        c.endTime.hour,
-        c.endTime.minute,
-      );
-      return classEnd.isBefore(now);
-    }).toList();
+  Widget _buildOverallStats(BuildContext context, List<Course> courses) {
+    // Calculate totals from course data
+    int totalAttended = 0;
+    int totalClasses = 0;
 
-    final attended = pastClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.attended)
-        .length;
-    final missed = pastClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.missed)
-        .length;
-    final cancelled = pastClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.cancelled)
-        .length;
-    final total = attended + missed;
-    final overallPercentage = total > 0 ? (attended / total) * 100 : 0.0;
+    for (final course in courses.where((c) => !c.isArchived)) {
+      totalAttended += course.attendedClasses;
+      totalClasses += course.totalClasses;
+    }
+
+    final missed = totalClasses - totalAttended;
+    final overallPercentage =
+        totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -135,7 +124,7 @@ class AnalyticsScreen extends StatelessWidget {
               _buildStatItem(
                 context,
                 'Attended',
-                attended.toString(),
+                totalAttended.toString(),
                 AppTheme.greenColor,
                 Icons.check_circle_rounded,
               ),
@@ -148,10 +137,10 @@ class AnalyticsScreen extends StatelessWidget {
               ),
               _buildStatItem(
                 context,
-                'Cancelled',
-                cancelled.toString(),
-                AppTheme.yellowColor,
-                Icons.event_busy_rounded,
+                'Total',
+                totalClasses.toString(),
+                AppTheme.primaryColor,
+                Icons.school_rounded,
               ),
             ],
           ),
@@ -224,83 +213,65 @@ class AnalyticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAttendancePieChart(
-      BuildContext context, List<ClassInstance> classInstances) {
-    final now = DateTime.now();
-    final pastClasses = classInstances.where((c) {
-      final classEnd = DateTime(
-        c.date.year,
-        c.date.month,
-        c.date.day,
-        c.endTime.hour,
-        c.endTime.minute,
-      );
-      return classEnd.isBefore(now);
-    }).toList();
+  Widget _buildAttendancePieChart(BuildContext context, List<Course> courses) {
+    // Calculate from course data
+    int totalAttended = 0;
+    int totalClasses = 0;
 
-    final attended = pastClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.attended)
-        .length;
-    final missed = pastClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.missed)
-        .length;
-    final cancelled = pastClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.cancelled)
-        .length;
-    final pending = pastClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.pending)
-        .length;
+    for (final course in courses.where((c) => !c.isArchived)) {
+      totalAttended += course.attendedClasses;
+      totalClasses += course.totalClasses;
+    }
+
+    final missed = totalClasses - totalAttended;
 
     return AttendancePieChart(
-      attended: attended,
+      attended: totalAttended,
       missed: missed,
-      cancelled: cancelled,
-      pending: pending,
+      cancelled: 0,
+      pending: 0,
     );
   }
 
-  Widget _buildWeeklyChart(
-      BuildContext context, List<ClassInstance> classInstances) {
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+  Widget _buildSubjectWiseChart(BuildContext context, List<Course> courses) {
+    final activeCourses = courses.where((c) => !c.isArchived).toList();
 
-    final List<double> weeklyData = [];
-    final List<String> labels = [
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun'
-    ];
+    if (activeCourses.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: AppTheme.extraLargeRadius,
+        ),
+        child: Center(
+          child: Text(
+            'No courses to display',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textSecondaryColor,
+                ),
+          ),
+        ),
+      );
+    }
 
-    for (int i = 0; i < 7; i++) {
-      final day = weekStart.add(Duration(days: i));
-      final dayClasses = classInstances.where((c) {
-        return c.date.year == day.year &&
-            c.date.month == day.month &&
-            c.date.day == day.day &&
-            c.attendanceStatus != AttendanceStatus.pending;
-      }).toList();
+    final List<double> percentages = [];
+    final List<String> labels = [];
 
-      if (dayClasses.isEmpty) {
-        weeklyData.add(0);
-      } else {
-        final attended = dayClasses
-            .where((c) => c.attendanceStatus == AttendanceStatus.attended)
-            .length;
-        final total = dayClasses
-            .where((c) => c.attendanceStatus != AttendanceStatus.cancelled)
-            .length;
-        weeklyData.add(total > 0 ? (attended / total) * 100 : 0);
-      }
+    for (final course in activeCourses) {
+      final percentage = course.totalClasses > 0
+          ? (course.attendedClasses / course.totalClasses) * 100
+          : 0.0;
+      percentages.add(percentage);
+      // Truncate long names
+      labels.add(course.name.length > 8
+          ? '${course.name.substring(0, 8)}...'
+          : course.name);
     }
 
     return AttendanceChart(
-      weeklyData: weeklyData,
+      weeklyData: percentages,
       labels: labels,
-      title: 'This Week\'s Attendance',
+      title: 'Subject-wise Attendance',
     );
   }
 
@@ -309,16 +280,10 @@ class AnalyticsScreen extends StatelessWidget {
     course,
     List<ClassInstance> classInstances,
   ) {
-    final courseClasses =
-        classInstances.where((c) => c.courseId == course.id).toList();
-
-    final attended = courseClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.attended)
-        .length;
-    final missed = courseClasses
-        .where((c) => c.attendanceStatus == AttendanceStatus.missed)
-        .length;
-    final total = attended + missed;
+    // Use data from the course object (My Courses screen data)
+    final attended = course.attendedClasses;
+    final total = course.totalClasses;
+    final missed = total - attended;
     final percentage = total > 0 ? (attended / total) * 100 : 0.0;
     final isOnTrack = percentage >= course.requiredAttendance;
 

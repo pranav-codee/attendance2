@@ -38,6 +38,13 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
+    
+    // Custom APK file name
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "BunkCheck-${variant.versionName}.apk"
+        }
+    }
 }
 
 flutter {
