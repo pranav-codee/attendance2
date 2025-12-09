@@ -356,17 +356,17 @@ class TodaysClassesScreen extends StatelessWidget {
     } else if (isPast) {
       switch (classInstance.attendanceStatus) {
         case AttendanceStatus.attended:
-          statusColor = AppTheme.greenColor;
+          statusColor = AppTheme.primaryColor;
           statusText = "Attended";
           statusIcon = Icons.check_circle_outline_rounded;
           break;
         case AttendanceStatus.missed:
-          statusColor = AppTheme.redColor;
+          statusColor = AppTheme.primaryColor;
           statusText = "Missed";
           statusIcon = Icons.cancel_outlined;
           break;
         case AttendanceStatus.cancelled:
-          statusColor = AppTheme.yellowColor;
+          statusColor = AppTheme.primaryColor;
           statusText = "Cancelled";
           statusIcon = Icons.event_busy_rounded;
           break;
@@ -516,13 +516,13 @@ class TodaysClassesScreen extends StatelessWidget {
                 context: context,
                 label: 'Attended',
                 icon: Icons.check_rounded,
-                color: AppTheme.greenColor,
+                color: AppTheme.primaryColorDark,
                 onPressed: () {
                   HapticFeedback.mediumImpact();
                   courseProvider.markAttendance(
                       classInstance.id, AttendanceStatus.attended);
-                  _showSnackBar(
-                      context, 'Marked as attended!', AppTheme.greenColor);
+                  _showSnackBar(context, 'Marked as attended!',
+                      AppTheme.primaryColorDark);
                 },
               ),
             ),
@@ -532,12 +532,13 @@ class TodaysClassesScreen extends StatelessWidget {
                 context: context,
                 label: 'Missed',
                 icon: Icons.close_rounded,
-                color: AppTheme.redColor,
+                color: AppTheme.primaryColorDark,
                 onPressed: () {
                   HapticFeedback.mediumImpact();
                   courseProvider.markAttendance(
                       classInstance.id, AttendanceStatus.missed);
-                  _showSnackBar(context, 'Marked as missed', AppTheme.redColor);
+                  _showSnackBar(
+                      context, 'Marked as missed', AppTheme.primaryColorDark);
                 },
               ),
             ),
@@ -550,13 +551,13 @@ class TodaysClassesScreen extends StatelessWidget {
             context: context,
             label: 'Cancelled',
             icon: Icons.event_busy_rounded,
-            color: AppTheme.yellowColor,
+            color: AppTheme.primaryColorDark,
             onPressed: () {
               HapticFeedback.lightImpact();
               courseProvider.markAttendance(
                   classInstance.id, AttendanceStatus.cancelled);
               _showSnackBar(
-                  context, 'Marked as cancelled', AppTheme.yellowColor);
+                  context, 'Marked as cancelled', AppTheme.primaryColorDark);
             },
           ),
         ),
