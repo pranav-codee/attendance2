@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'utils/app_theme.dart';
 import 'providers/course_provider.dart';
+import 'providers/exam_provider.dart';
 import 'screens/todays_classes_screen.dart';
 import 'screens/my_courses_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/add_course_screen.dart';
 import 'screens/archived_courses_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/exams_screen.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -24,16 +26,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) {
-        final provider = CourseProvider();
-        provider.loadData().then((_) {
-          provider.generateTodaysClasses();
-          // Schedule notifications for today's classes
-          _scheduleNotifications(provider);
-        });
-        return provider;
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) {
+            final provider = CourseProvider();
+            provider.loadData().then((_) {
+              provider.generateTodaysClasses();
+              // Schedule notifications for today's classes
+              _scheduleNotifications(provider);
+            });
+            return provider;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (context) {
+            final provider = ExamProvider();
+            provider.loadExams();
+            return provider;
+          },
+        ),
+      ],
       child: MaterialApp(
         title: 'Class Scheduler',
         theme: AppTheme.darkTheme,
@@ -75,6 +88,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const TodaysClassesScreen(),
     const MyCoursesScreen(),
+    const ExamsScreen(),
     const AnalyticsScreen(),
     const SettingsScreen(),
   ];
@@ -98,14 +112,15 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(0, Icons.calendar_today_rounded, "Today"),
                 _buildNavItem(1, Icons.school_rounded, "Courses"),
-                _buildNavItem(2, Icons.analytics_rounded, "Analytics"),
-                _buildNavItem(3, Icons.settings_rounded, "Settings"),
+                _buildNavItem(2, Icons.event_note_rounded, "Exams"),
+                _buildNavItem(3, Icons.analytics_rounded, "Stats"),
+                _buildNavItem(4, Icons.settings_rounded, "Settings"),
               ],
             ),
           ),
@@ -125,7 +140,7 @@ class _MainScreenState extends State<MainScreen> {
       },
       child: AnimatedContainer(
         duration: AppTheme.fastAnimation,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryColor.withOpacity(0.15)
@@ -142,7 +157,7 @@ class _MainScreenState extends State<MainScreen> {
                 color: isSelected
                     ? AppTheme.primaryColor
                     : AppTheme.textSecondaryColor,
-                size: 24,
+                size: 22,
               ),
             ),
             const SizedBox(height: 4),
@@ -152,7 +167,7 @@ class _MainScreenState extends State<MainScreen> {
                 color: isSelected
                     ? AppTheme.primaryColor
                     : AppTheme.textSecondaryColor,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 letterSpacing: 0.1,
               ),
