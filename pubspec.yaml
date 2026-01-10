@@ -47,7 +47,7 @@ dependencies:
   # Notifications
   flutter_local_notifications: ^17.0.0
   timezone: ^0.9.2
-  flutter_timezone: ^1.0.8
+  flutter_timezone: ^3.0.1
 
   # Export and sharing
   share_plus: ^7.2.1

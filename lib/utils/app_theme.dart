@@ -139,14 +139,14 @@ class AppTheme {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
-      cardTheme: CardTheme(
+      cardTheme: const CardThemeData(
         color: surfaceColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.all(Radius.circular(20)),
         ),
         elevation: 0,
         shadowColor: Colors.transparent,
-        margin: const EdgeInsets.symmetric(vertical: 8),
+        margin: EdgeInsets.symmetric(vertical: 8),
       ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
@@ -231,7 +231,7 @@ class AppTheme {
         activeTrackColor: primaryColor,
         inactiveTrackColor: surfaceColorHighlight,
         thumbColor: textPrimaryColor,
-        overlayColor: primaryColor.withOpacity(0.2),
+        overlayColor: primaryColor.withValues(alpha: 0.2),
         trackHeight: 4,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
       ),
@@ -259,7 +259,7 @@ class AppTheme {
   // Custom box shadows for elevated elements
   static List<BoxShadow> get softShadow => [
         BoxShadow(
-          color: Colors.black.withOpacity(0.1),
+          color: Colors.black.withValues(alpha: 0.1),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -267,7 +267,7 @@ class AppTheme {
 
   static List<BoxShadow> get mediumShadow => [
         BoxShadow(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.withValues(alpha: 0.15),
           blurRadius: 20,
           offset: const Offset(0, 8),
         ),

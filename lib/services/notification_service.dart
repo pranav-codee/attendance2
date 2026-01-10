@@ -19,6 +19,9 @@ class NotificationService {
 
   bool _isInitialized = false;
 
+  // Callback for marking attendance from notification
+  Function(String classInstanceId, String action)? onAttendanceAction;
+
   // Settings keys
   static const String _preClassRemindersKey = 'preClassReminders';
   static const String _postClassPromptsKey = 'postClassPrompts';
@@ -142,9 +145,26 @@ class NotificationService {
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // Handle notification tap - navigation is handled by the app
     if (kDebugMode) {
-      print('Notification tapped: ${response.payload}');
+      print(
+          'Notification tapped: ${response.payload}, action: ${response.actionId}');
+    }
+
+    // Handle notification action buttons (Attended/Missed)
+    final actionId = response.actionId;
+    final payload = response.payload;
+
+    if (actionId != null &&
+        payload != null &&
+        payload.startsWith('attendance:')) {
+      final classInstanceId = payload.replaceFirst('attendance:', '');
+
+      if (actionId == 'attended' || actionId == 'missed') {
+        // Call the callback to mark attendance
+        if (onAttendanceAction != null) {
+          onAttendanceAction!(classInstanceId, actionId);
+        }
+      }
     }
   }
 
@@ -264,12 +284,12 @@ class NotificationService {
             AndroidNotificationAction(
               'attended',
               'Attended',
-              showsUserInterface: true,
+              showsUserInterface: false,
             ),
             AndroidNotificationAction(
               'missed',
               'Missed',
-              showsUserInterface: true,
+              showsUserInterface: false,
             ),
           ],
         ),

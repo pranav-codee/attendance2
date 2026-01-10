@@ -71,9 +71,36 @@ class CourseProvider with ChangeNotifier {
       String courseId, int totalClasses, int attendedClasses) async {
     final index = _courses.indexWhere((course) => course.id == courseId);
     if (index != -1) {
-      _courses[index] = _courses[index].copyWith(
+      final course = _courses[index];
+
+      // Calculate the offsets based on tracked class instances
+      final courseClasses = _classInstances
+          .where((classInstance) =>
+              classInstance.courseId == courseId &&
+              classInstance.date
+                  .isBefore(DateTime.now().add(const Duration(days: 1))) &&
+              classInstance.attendanceStatus != AttendanceStatus.pending)
+          .toList();
+
+      final trackedAttended = courseClasses
+          .where((classInstance) =>
+              classInstance.attendanceStatus == AttendanceStatus.attended)
+          .length;
+
+      final trackedTotal = courseClasses
+          .where((classInstance) =>
+              classInstance.attendanceStatus != AttendanceStatus.cancelled)
+          .length;
+
+      // Calculate the offset (difference between manual edit and tracked values)
+      final newTotalOffset = totalClasses - trackedTotal;
+      final newAttendedOffset = attendedClasses - trackedAttended;
+
+      _courses[index] = course.copyWith(
         totalClasses: totalClasses,
         attendedClasses: attendedClasses,
+        totalClassesOffset: newTotalOffset,
+        attendedClassesOffset: newAttendedOffset,
       );
       await saveData();
       notifyListeners();
@@ -269,19 +296,23 @@ class CourseProvider with ChangeNotifier {
               classInstance.attendanceStatus != AttendanceStatus.pending)
           .toList();
 
-      final attendedClasses = courseClasses
+      final trackedAttended = courseClasses
           .where((classInstance) =>
               classInstance.attendanceStatus == AttendanceStatus.attended)
           .length;
 
-      final totalClassesForAttendance = courseClasses
+      final trackedTotal = courseClasses
           .where((classInstance) =>
               classInstance.attendanceStatus != AttendanceStatus.cancelled)
           .length;
 
+      // Add the manual offset to the tracked values
+      final finalTotal = trackedTotal + course.totalClassesOffset;
+      final finalAttended = trackedAttended + course.attendedClassesOffset;
+
       _courses[courseIndex] = course.copyWith(
-        totalClasses: totalClassesForAttendance,
-        attendedClasses: attendedClasses,
+        totalClasses: finalTotal < 0 ? 0 : finalTotal,
+        attendedClasses: finalAttended < 0 ? 0 : finalAttended,
       );
     }
   }

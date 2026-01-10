@@ -11,12 +11,28 @@ import 'screens/archived_courses_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/exams_screen.dart';
 import 'services/notification_service.dart';
+import 'models/class_instance.dart';
+
+// Global key for accessing the CourseProvider from notification callbacks
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+CourseProvider? globalCourseProvider;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize notification service
-  await NotificationService().initialize();
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+
+  // Set up the callback for handling attendance actions from notifications
+  notificationService.onAttendanceAction = (classInstanceId, action) {
+    if (globalCourseProvider != null) {
+      final status = action == 'attended'
+          ? AttendanceStatus.attended
+          : AttendanceStatus.missed;
+      globalCourseProvider!.markAttendance(classInstanceId, status);
+    }
+  };
 
   runApp(const MyApp());
 }
@@ -31,6 +47,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) {
             final provider = CourseProvider();
+            globalCourseProvider = provider; // Store reference globally
             provider.loadData().then((_) {
               provider.generateTodaysClasses();
               // Schedule notifications for today's classes
@@ -48,6 +65,7 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'Class Scheduler',
         theme: AppTheme.darkTheme,
         home: const MainScreen(),

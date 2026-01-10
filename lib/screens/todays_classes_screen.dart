@@ -1,13 +1,96 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/course_provider.dart';
 import '../models/class_instance.dart';
 import '../models/course.dart';
 import '../utils/app_theme.dart';
 
-class TodaysClassesScreen extends StatelessWidget {
+class TodaysClassesScreen extends StatefulWidget {
   const TodaysClassesScreen({super.key});
+
+  @override
+  State<TodaysClassesScreen> createState() => _TodaysClassesScreenState();
+}
+
+class _TodaysClassesScreenState extends State<TodaysClassesScreen> {
+  Timer? _refreshTimer;
+  bool _isHoliday = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHolidayState();
+    // Auto-refresh every minute to update class status
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadHolidayState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now();
+    final savedDate = prefs.getString('holidayDate');
+    final todayString = '${today.year}-${today.month}-${today.day}';
+
+    if (savedDate == todayString) {
+      setState(() {
+        _isHoliday = prefs.getBool('isHoliday') ?? false;
+      });
+    } else {
+      // Reset holiday status for new day
+      await prefs.setBool('isHoliday', false);
+      await prefs.setString('holidayDate', todayString);
+      setState(() {
+        _isHoliday = false;
+      });
+    }
+  }
+
+  Future<void> _toggleHoliday(bool value, CourseProvider courseProvider) async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now();
+    final todayString = '${today.year}-${today.month}-${today.day}';
+
+    await prefs.setBool('isHoliday', value);
+    await prefs.setString('holidayDate', todayString);
+
+    setState(() {
+      _isHoliday = value;
+    });
+
+    if (value) {
+      // Mark all today's pending classes as cancelled
+      final todaysClasses = courseProvider.getTodaysClasses();
+      for (final classInstance in todaysClasses) {
+        if (classInstance.attendanceStatus == AttendanceStatus.pending) {
+          await courseProvider.markAttendance(
+              classInstance.id, AttendanceStatus.cancelled);
+        }
+      }
+      if (mounted) {
+        _showSnackBar(context, 'All classes marked as cancelled for holiday!',
+            AppTheme.orangeColor);
+      }
+    }
+  }
+
+  void _refreshScreen(CourseProvider courseProvider) {
+    HapticFeedback.lightImpact();
+    courseProvider.generateTodaysClasses();
+    setState(() {});
+    _showSnackBar(context, 'Refreshed!', AppTheme.primaryColor);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,8 +130,76 @@ class TodaysClassesScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        _buildAddButton(context),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Consumer<CourseProvider>(
+                              builder: (context, courseProvider, child) {
+                                return _buildRefreshButton(
+                                    context, courseProvider);
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildAddButton(context),
+                          ],
+                        ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Holiday Toggle
+                    Consumer<CourseProvider>(
+                      builder: (context, courseProvider, child) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _isHoliday
+                                ? AppTheme.orangeColor.withOpacity(0.15)
+                                : AppTheme.surfaceColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _isHoliday
+                                  ? AppTheme.orangeColor.withOpacity(0.3)
+                                  : AppTheme.surfaceColorHighlight,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isHoliday
+                                    ? Icons.beach_access_rounded
+                                    : Icons.calendar_today_rounded,
+                                color: _isHoliday
+                                    ? AppTheme.orangeColor
+                                    : AppTheme.textSecondaryColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Holiday Mode',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: _isHoliday
+                                            ? AppTheme.orangeColor
+                                            : AppTheme.textPrimaryColor,
+                                      ),
+                                ),
+                              ),
+                              Switch(
+                                value: _isHoliday,
+                                onChanged: (value) =>
+                                    _toggleHoliday(value, courseProvider),
+                                activeColor: AppTheme.orangeColor,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     Consumer<CourseProvider>(
@@ -225,6 +376,39 @@ class TodaysClassesScreen extends StatelessWidget {
             child: const Icon(
               Icons.add_rounded,
               color: Colors.white,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRefreshButton(
+      BuildContext context, CourseProvider courseProvider) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.surfaceColorHighlight,
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _refreshScreen(courseProvider),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.refresh_rounded,
+              color: AppTheme.textSecondaryColor,
               size: 24,
             ),
           ),

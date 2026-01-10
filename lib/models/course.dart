@@ -7,6 +7,9 @@ class Course {
   final double requiredAttendance;
   final int totalClasses;
   final int attendedClasses;
+  final int totalClassesOffset; // Manual adjustment offset for total classes
+  final int
+      attendedClassesOffset; // Manual adjustment offset for attended classes
   final List<WeeklyClass> weeklyClasses;
   final DateTime createdAt;
   final bool isArchived;
@@ -18,6 +21,8 @@ class Course {
     required this.requiredAttendance,
     this.totalClasses = 0,
     this.attendedClasses = 0,
+    this.totalClassesOffset = 0,
+    this.attendedClassesOffset = 0,
     required this.weeklyClasses,
     required this.createdAt,
     this.isArchived = false,
@@ -31,6 +36,8 @@ class Course {
       'requiredAttendance': requiredAttendance,
       'totalClasses': totalClasses,
       'attendedClasses': attendedClasses,
+      'totalClassesOffset': totalClassesOffset,
+      'attendedClassesOffset': attendedClassesOffset,
       'weeklyClasses': weeklyClasses.map((wc) => wc.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
       'isArchived': isArchived,
@@ -53,6 +60,8 @@ class Course {
       requiredAttendance: json["requiredAttendance"],
       totalClasses: json["totalClasses"] ?? 0,
       attendedClasses: json["attendedClasses"] ?? 0,
+      totalClassesOffset: json["totalClassesOffset"] ?? 0,
+      attendedClassesOffset: json["attendedClassesOffset"] ?? 0,
       weeklyClasses: classes,
       createdAt: DateTime.parse(json['createdAt']),
       isArchived: json['isArchived'] ?? false,
@@ -66,6 +75,8 @@ class Course {
     double? requiredAttendance,
     int? totalClasses,
     int? attendedClasses,
+    int? totalClassesOffset,
+    int? attendedClassesOffset,
     List<WeeklyClass>? weeklyClasses,
     DateTime? createdAt,
     bool? isArchived,
@@ -77,6 +88,9 @@ class Course {
       requiredAttendance: requiredAttendance ?? this.requiredAttendance,
       totalClasses: totalClasses ?? this.totalClasses,
       attendedClasses: attendedClasses ?? this.attendedClasses,
+      totalClassesOffset: totalClassesOffset ?? this.totalClassesOffset,
+      attendedClassesOffset:
+          attendedClassesOffset ?? this.attendedClassesOffset,
       weeklyClasses: weeklyClasses ?? this.weeklyClasses,
       createdAt: createdAt ?? this.createdAt,
       isArchived: isArchived ?? this.isArchived,
